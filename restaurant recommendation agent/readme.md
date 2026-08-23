@@ -684,5 +684,4 @@ aws cloudformation describe-stacks --stack-name restaurant-agent --region us-eas
 ---
 
 ## License
-
-MIT (or update to match your course/organization's requirements).
+*MIT License*
