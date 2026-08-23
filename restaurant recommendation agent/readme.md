@@ -295,8 +295,6 @@ Each policy should now contain a statement with `"Sid": "GatewayInvoke"`:
 }
 ```
 
-> 📸 *Screenshot: `get-policy` output showing the `GatewayInvoke` statement*
-
 ---
 
 ## Part 6  -  Fix the Lambda code (Classic format → Gateway format)
