@@ -112,8 +112,6 @@ aws cloudformation describe-stacks \
 ]
 ```
 
-> 📸 *Screenshot: CLI output of the successful deploy + describe-stacks output*
-
 ---
 
 ## Part 2  -  Discover Bedrock Agents Classic is unavailable
@@ -124,7 +122,7 @@ Opening **Bedrock console → Agents** (the originally-planned path) revealed no
 >
 > **Agents Classic will no longer be open to new customers starting on July 30, 2026.** Amazon Bedrock Agents (launched Nov 2023) is now "Amazon Bedrock Agents Classic" and will no longer be open to new customers starting AgentCore.
 
-> 📸 *Screenshot: the maintenance-mode banner on the Agents Classic page*
+
 
 **Decision:** build on **AgentCore** (Gateway + Harness) instead, which is what AWS now points new accounts toward for equivalent capability.
 
@@ -144,7 +142,7 @@ Navigate to **Bedrock console → AgentCore → Gateways → Create gateway**.
    policy allows the cognito-idp:CreateResourceServer action
    ```
 
-   > 📸 *Screenshot: the Cognito permission error*
+
 
 3. **Fix:** switched Inbound Auth type to **"Use IAM permissions"** instead:
 
@@ -152,7 +150,8 @@ Navigate to **Bedrock console → AgentCore → Gateways → Create gateway**.
 
    This avoids provisioning any Cognito resources entirely  -  no extra IAM permissions needed, and it's the simpler choice for single-user/lab use anyway.
 
-   > 📸 *Screenshot: Inbound Auth configuration set to "Use IAM permissions"*
+   > Gateway created
+   > ![Gateway](https://github.com/MsSam08/aws-agent-engineer-udacity-projects/blob/main/restaurant%20recommendation%20agent/udacity%202.png)
 
 4. Saved the gateway with no targets yet (added next).
 
@@ -234,8 +233,6 @@ search-restaurants-target: Gateway execution role lacks permission to invoke Lam
 get-availability-target: 1 validation error detected: Value at 'name' failed to satisfy
 constraint: Member must satisfy regular expression pattern: ([0-9a-zA-Z][-]?){1,100}
 ```
-
-> 📸 *Screenshot: the mixed target-creation error*
 
 Two distinct problems surfaced here  -  fixed in Parts 5 and 6.
 
@@ -474,7 +471,8 @@ Each should return `Successful`.
 
 **Re-add the three targets in the Gateway console**  -  this time all three succeed and show status **Ready**:
 
-> 📸 *Screenshot: Targets table showing all 3 targets with ✅ Ready status*
+> Targets created
+> ![Targets](https://github.com/MsSam08/aws-agent-engineer-udacity-projects/blob/main/restaurant%20recommendation%20agent/udacity%203.png)
 
 ---
 
@@ -512,7 +510,8 @@ Navigate to **Bedrock console → AgentCore → Harness → Create harness**.
 
 - **Tools:** Add tools → **Connect a Gateway** → select `restaurant-agent-gateway`
 
-> 📸 *Screenshot: Harness detail page showing Tools (1) → restaurant-agent-gateway, Type: Gateway*
+> Harness created
+> ![Harness](https://github.com/MsSam08/aws-agent-engineer-udacity-projects/blob/main/restaurant%20recommendation%20agent/udacity%201.png)
 
 > **Note:** if you create the Harness before attaching the Gateway (easy to do), just edit the Harness afterward and add the Gateway under its Tools section  -  no need to delete and recreate.
 
@@ -530,7 +529,8 @@ Model produced invalid sequence as part of ToolUse. Please refer to the
 model tool use troubleshooting guide.
 ```
 
-> 📸 *Screenshot: the modelStreamErrorException in the test playground*
+> Model Error
+> ![Error](https://github.com/MsSam08/aws-agent-engineer-udacity-projects/blob/main/restaurant%20recommendation%20agent/udacity%206.png)
 
 **Fixes attempted, in order:**
 
@@ -567,13 +567,13 @@ Find me an Italian restaurant for tonight.
 // Status: ✅ Success
 ```
 
-> 📸 *Screenshot: Search-Restaurants-Target trace, Input/Output, Success*
+> Agent response
+> ![Chat](https://github.com/MsSam08/aws-agent-engineer-udacity-projects/blob/main/restaurant%20recommendation%20agent/udaacity%205.png)
 
 The agent then reasoned about the results and moved on to check availability:
 
 > *"I found 2 Italian restaurants. Now let me check their availability for tonight."*
 
-> 📸 *Screenshot: agent chat response mid-flow*
 
 > **Note:** at this point in testing, the next model call intermittently hit `AccessDeniedException: Model access is denied due to IAM user or service role is not authorized to perform the required AWS Marketplace actions`. This is a one-time-per-account Marketplace subscription enablement quirk (see AWS's [model access documentation](https://docs.aws.amazon.com/bedrock/latest/userguide/model-access.html))  -  resolvable by retrying after a short wait, or by an administrator granting `aws-marketplace:ViewSubscriptions` / `aws-marketplace:Subscribe` to the role.
 
