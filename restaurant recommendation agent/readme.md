@@ -1,8 +1,8 @@
-# Restaurant Recommendation Agent — Amazon Bedrock AgentCore
+# Restaurant Recommendation Agent  -  Amazon Bedrock AgentCore
 
-A restaurant recommendation agent built on **Amazon Bedrock AgentCore**, backed by three AWS Lambda functions and orchestrated through an **AgentCore Gateway** and **Harness**. Ask it *"Find me an Italian restaurant for tonight"* and it searches restaurants by cuisine, checks live availability, and returns a recommendation grounded entirely in tool results — never invented.
+A restaurant recommendation agent built on **Amazon Bedrock AgentCore**, backed by three AWS Lambda functions and orchestrated through an **AgentCore Gateway** and **Harness**. Ask it *"Find me an Italian restaurant for tonight"* and it searches restaurants by cuisine, checks live availability, and returns a recommendation grounded entirely in tool results  -  never invented.
 
-> **Why AgentCore and not Bedrock Agents?** This project was originally scoped for the classic point-and-click Bedrock Agents builder. Partway through, it turned out that builder ("Agents Classic") is now in maintenance mode and closed to new accounts. This README documents the full pivot to AgentCore, including every platform issue hit along the way and how each was fixed — step by step, with the actual commands and code used.
+> **Why AgentCore and not Bedrock Agents?** This project was originally scoped for the classic point-and-click Bedrock Agents builder. Partway through, it turned out that builder ("Agents Classic") is now in maintenance mode and closed to new accounts. This README documents the full pivot to AgentCore, including every platform issue hit along the way and how each was fixed  -  step by step, with the actual commands and code used.
 
 ---
 
@@ -10,15 +10,15 @@ A restaurant recommendation agent built on **Amazon Bedrock AgentCore**, backed 
 
 - [Architecture](#architecture)
 - [Prerequisites](#prerequisites)
-- [Part 1 — Deploy the Lambda functions](#part-1--deploy-the-lambda-functions)
-- [Part 2 — Discover Bedrock Agents Classic is unavailable](#part-2--discover-bedrock-agents-classic-is-unavailable)
-- [Part 3 — Create the AgentCore Gateway](#part-3--create-the-agentcore-gateway)
-- [Part 4 — Add Lambda targets to the Gateway](#part-4--add-lambda-targets-to-the-gateway)
-- [Part 5 — Fix Lambda invoke permissions](#part-5--fix-lambda-invoke-permissions)
-- [Part 6 — Fix the Lambda code (Classic format → Gateway format)](#part-6--fix-the-lambda-code-classic-format--gateway-format)
-- [Part 7 — Create the Harness (the agent)](#part-7--create-the-harness-the-agent)
-- [Part 8 — Debug the Nova Pro tool-calling bug](#part-8--debug-the-nova-pro-tool-calling-bug)
-- [Part 9 — Test the working agent](#part-9--test-the-working-agent)
+- [Part 1  -  Deploy the Lambda functions](#part-1--deploy-the-lambda-functions)
+- [Part 2  -  Discover Bedrock Agents Classic is unavailable](#part-2--discover-bedrock-agents-classic-is-unavailable)
+- [Part 3  -  Create the AgentCore Gateway](#part-3--create-the-agentcore-gateway)
+- [Part 4  -  Add Lambda targets to the Gateway](#part-4--add-lambda-targets-to-the-gateway)
+- [Part 5  -  Fix Lambda invoke permissions](#part-5--fix-lambda-invoke-permissions)
+- [Part 6  -  Fix the Lambda code (Classic format → Gateway format)](#part-6--fix-the-lambda-code-classic-format--gateway-format)
+- [Part 7  -  Create the Harness (the agent)](#part-7--create-the-harness-the-agent)
+- [Part 8  -  Debug the Nova Pro tool-calling bug](#part-8--debug-the-nova-pro-tool-calling-bug)
+- [Part 9  -  Test the working agent](#part-9--test-the-working-agent)
 - [Tool schemas reference](#tool-schemas-reference)
 - [Full troubleshooting index](#full-troubleshooting-index)
 - [Cleanup](#cleanup)
@@ -52,9 +52,9 @@ User: "Find me an Italian restaurant for tonight."
 ```
 
 **Components:**
-- **3 Lambda functions** — deployed via CloudFormation, hold the actual restaurant data and logic
-- **AgentCore Gateway** — exposes the Lambdas as MCP tools over a single managed endpoint
-- **AgentCore Harness** — the agent itself: model + system prompt + Gateway connection, fully managed (no orchestration code)
+- **3 Lambda functions**  -  deployed via CloudFormation, hold the actual restaurant data and logic
+- **AgentCore Gateway**  -  exposes the Lambdas as MCP tools over a single managed endpoint
+- **AgentCore Harness**  -  the agent itself: model + system prompt + Gateway connection, fully managed (no orchestration code)
 
 ---
 
@@ -62,7 +62,7 @@ User: "Find me an Italian restaurant for tonight."
 
 - AWS CLI v2 configured with credentials that can deploy CloudFormation, manage Lambda, and use Bedrock/AgentCore
 - Region: `us-east-1`
-- `template.yaml` (CloudFormation template defining the three Lambda functions) — see [`/template.yaml`](./template.yaml)
+- `template.yaml` (CloudFormation template defining the three Lambda functions)  -  see [`/template.yaml`](./template.yaml)
 
 Verify your credentials before starting:
 
@@ -74,7 +74,7 @@ You should see your Account ID and ARN returned. If this fails with `InvalidClie
 
 ---
 
-## Part 1 — Deploy the Lambda functions
+## Part 1  -  Deploy the Lambda functions
 
 The provided CloudFormation template creates three Lambda functions (`get-cuisines`, `search-restaurants`, `get-availability`) and grants baseline permissions.
 
@@ -86,7 +86,7 @@ aws cloudformation deploy \
   --region us-east-1
 ```
 
-Once it completes, pull the Lambda ARNs from the stack outputs — you'll need these throughout:
+Once it completes, pull the Lambda ARNs from the stack outputs  -  you'll need these throughout:
 
 ```bash
 aws cloudformation describe-stacks \
@@ -116,9 +116,9 @@ aws cloudformation describe-stacks \
 
 ---
 
-## Part 2 — Discover Bedrock Agents Classic is unavailable
+## Part 2  -  Discover Bedrock Agents Classic is unavailable
 
-Opening **Bedrock console → Agents** (the originally-planned path) revealed no "Agents" item under Build — only **AgentCore** and **Guardrails**. Navigating directly to the Agents Classic page surfaced this banner:
+Opening **Bedrock console → Agents** (the originally-planned path) revealed no "Agents" item under Build  -  only **AgentCore** and **Guardrails**. Navigating directly to the Agents Classic page surfaced this banner:
 
 > ⚠️ **Bedrock Agents is in Maintenance Mode.** New agent creation is not available for accounts without prior service usage.
 >
@@ -130,12 +130,12 @@ Opening **Bedrock console → Agents** (the originally-planned path) revealed no
 
 ---
 
-## Part 3 — Create the AgentCore Gateway
+## Part 3  -  Create the AgentCore Gateway
 
 Navigate to **Bedrock console → AgentCore → Gateways → Create gateway**.
 
 1. **Name:** `restaurant-agent-gateway`
-2. **Inbound Auth type:** initially tried **"Quick create configurations with Cognito"** (the recommended default) — this failed:
+2. **Inbound Auth type:** initially tried **"Quick create configurations with Cognito"** (the recommended default)  -  this failed:
 
    ```
    Failed to create Cognito resources: User: arn:aws:sts::<ACCOUNT_ID>:assumed-role/...
@@ -150,7 +150,7 @@ Navigate to **Bedrock console → AgentCore → Gateways → Create gateway**.
 
    > *"This gateway will perform authentication and authorization using AWS Signature Version 4 (SigV4). No further configurations are necessary."*
 
-   This avoids provisioning any Cognito resources entirely — no extra IAM permissions needed, and it's the simpler choice for single-user/lab use anyway.
+   This avoids provisioning any Cognito resources entirely  -  no extra IAM permissions needed, and it's the simpler choice for single-user/lab use anyway.
 
    > 📸 *Screenshot: Inbound Auth configuration set to "Use IAM permissions"*
 
@@ -158,7 +158,7 @@ Navigate to **Bedrock console → AgentCore → Gateways → Create gateway**.
 
 ---
 
-## Part 4 — Add Lambda targets to the Gateway
+## Part 4  -  Add Lambda targets to the Gateway
 
 Each Lambda becomes a separate **target** on the Gateway. For each target:
 
@@ -166,7 +166,7 @@ Each Lambda becomes a separate **target** on the Gateway. For each target:
 - **Target type:** Lambda ARN
 - **Target schema:** Define an inline schema (JSON Schema describing the tool)
 
-### Target 1 — `get-cuisines-target`
+### Target 1  -  `get-cuisines-target`
 
 ```json
 [
@@ -182,7 +182,7 @@ Each Lambda becomes a separate **target** on the Gateway. For each target:
 ]
 ```
 
-### Target 2 — `search-restaurants-target`
+### Target 2  -  `search-restaurants-target`
 
 ```json
 [
@@ -203,7 +203,7 @@ Each Lambda becomes a separate **target** on the Gateway. For each target:
 ]
 ```
 
-### Target 3 — `get-availability-target`
+### Target 3  -  `get-availability-target`
 
 ```json
 [
@@ -237,11 +237,11 @@ constraint: Member must satisfy regular expression pattern: ([0-9a-zA-Z][-]?){1,
 
 > 📸 *Screenshot: the mixed target-creation error*
 
-Two distinct problems surfaced here — fixed in Parts 5 and 6.
+Two distinct problems surfaced here  -  fixed in Parts 5 and 6.
 
 ---
 
-## Part 5 — Fix Lambda invoke permissions
+## Part 5  -  Fix Lambda invoke permissions
 
 The Gateway has its own **execution role**, separate from any IAM role your Lambdas already trust. Each Lambda needs a resource-based policy explicitly granting that role `lambda:InvokeFunction`.
 
@@ -302,9 +302,9 @@ Each policy should now contain a statement with `"Sid": "GatewayInvoke"`:
 
 ---
 
-## Part 6 — Fix the Lambda code (Classic format → Gateway format)
+## Part 6  -  Fix the Lambda code (Classic format → Gateway format)
 
-The permission fix alone wasn't enough. Inspecting the actual deployed Lambda code revealed it was written for **Bedrock Agents Classic's** invocation contract, not AgentCore Gateway's — a completely different input/output shape.
+The permission fix alone wasn't enough. Inspecting the actual deployed Lambda code revealed it was written for **Bedrock Agents Classic's** invocation contract, not AgentCore Gateway's  -  a completely different input/output shape.
 
 **Pull the deployed code to inspect it:**
 
@@ -321,7 +321,7 @@ with zipfile.ZipFile('/tmp/get-availability.zip') as z:
 cat /tmp/get-availability-src/index.py
 ```
 
-**Original code (Classic format — broken under Gateway):**
+**Original code (Classic format  -  broken under Gateway):**
 
 ```python
 import json
@@ -472,13 +472,13 @@ aws lambda get-function --function-name get-availability --query 'Configuration.
 
 Each should return `Successful`.
 
-**Re-add the three targets in the Gateway console** — this time all three succeed and show status **Ready**:
+**Re-add the three targets in the Gateway console**  -  this time all three succeed and show status **Ready**:
 
 > 📸 *Screenshot: Targets table showing all 3 targets with ✅ Ready status*
 
 ---
 
-## Part 7 — Create the Harness (the agent)
+## Part 7  -  Create the Harness (the agent)
 
 Navigate to **Bedrock console → AgentCore → Harness → Create harness**.
 
@@ -502,7 +502,7 @@ Navigate to **Bedrock console → AgentCore → Harness → Create harness**.
      time, check its availability using the availability tool. Do not
      recommend a restaurant without confirming it has availability.
   5. Base your final recommendation strictly on the tool results you
-     received in this conversation — do not fabricate restaurant names,
+     received in this conversation  -  do not fabricate restaurant names,
      cuisines, or availability.
   6. If no restaurants match or none have availability, tell the user
      clearly rather than inventing an alternative.
@@ -514,13 +514,13 @@ Navigate to **Bedrock console → AgentCore → Harness → Create harness**.
 
 > 📸 *Screenshot: Harness detail page showing Tools (1) → restaurant-agent-gateway, Type: Gateway*
 
-> **Note:** if you create the Harness before attaching the Gateway (easy to do), just edit the Harness afterward and add the Gateway under its Tools section — no need to delete and recreate.
+> **Note:** if you create the Harness before attaching the Gateway (easy to do), just edit the Harness afterward and add the Gateway under its Tools section  -  no need to delete and recreate.
 
 ---
 
-## Part 8 — Debug the Nova Pro tool-calling bug
+## Part 8  -  Debug the Nova Pro tool-calling bug
 
-First test against Nova Pro failed immediately, every time, at the exact same point — right as the model finished reasoning and tried to invoke a tool:
+First test against Nova Pro failed immediately, every time, at the exact same point  -  right as the model finished reasoning and tried to invoke a tool:
 
 ```
 <thinking> To find an Italian restaurant for tonight, I first need to get the
@@ -534,16 +534,16 @@ model tool use troubleshooting guide.
 
 **Fixes attempted, in order:**
 
-1. **Set `temperature=0` and raised max tokens** in the Harness's inference configuration — AWS's own Nova troubleshooting guide recommends this as it improves tool-call reliability via greedy decoding. Did not resolve it.
-2. **Simplified the system prompt** to reduce multi-step chain-of-thought reasoning before tool calls. Did not resolve it — same error, shorter `<thinking>` block.
+1. **Set `temperature=0` and raised max tokens** in the Harness's inference configuration  -  AWS's own Nova troubleshooting guide recommends this as it improves tool-call reliability via greedy decoding. Did not resolve it.
+2. **Simplified the system prompt** to reduce multi-step chain-of-thought reasoning before tool calls. Did not resolve it  -  same error, shorter `<thinking>` block.
 3. **Retried multiple times.** Failed consistently, ruling out a purely transient/non-deterministic cause.
-4. **Switched the Harness's model to Claude.** ✅ Resolved immediately — no further `modelStreamErrorException` on any subsequent call.
+4. **Switched the Harness's model to Claude.** ✅ Resolved immediately  -  no further `modelStreamErrorException` on any subsequent call.
 
-This matches independently reported issues with Nova models' tool-calling behavior under the Converse API streaming interface (reproduced across other SDKs, e.g. LangChain, Strands) — a platform-level limitation, not a configuration mistake.
+This matches independently reported issues with Nova models' tool-calling behavior under the Converse API streaming interface (reproduced across other SDKs, e.g. LangChain, Strands)  -  a platform-level limitation, not a configuration mistake.
 
 ---
 
-## Part 9 — Test the working agent
+## Part 9  -  Test the working agent
 
 With Claude set as the Harness model, sent the test prompt:
 
@@ -551,7 +551,7 @@ With Claude set as the Harness model, sent the test prompt:
 Find me an Italian restaurant for tonight.
 ```
 
-**Trace — `search_restaurants` call:**
+**Trace  -  `search_restaurants` call:**
 
 ```json
 // Input
@@ -575,7 +575,7 @@ The agent then reasoned about the results and moved on to check availability:
 
 > 📸 *Screenshot: agent chat response mid-flow*
 
-> **Note:** at this point in testing, the next model call intermittently hit `AccessDeniedException: Model access is denied due to IAM user or service role is not authorized to perform the required AWS Marketplace actions`. This is a one-time-per-account Marketplace subscription enablement quirk (see AWS's [model access documentation](https://docs.aws.amazon.com/bedrock/latest/userguide/model-access.html)) — resolvable by retrying after a short wait, or by an administrator granting `aws-marketplace:ViewSubscriptions` / `aws-marketplace:Subscribe` to the role.
+> **Note:** at this point in testing, the next model call intermittently hit `AccessDeniedException: Model access is denied due to IAM user or service role is not authorized to perform the required AWS Marketplace actions`. This is a one-time-per-account Marketplace subscription enablement quirk (see AWS's [model access documentation](https://docs.aws.amazon.com/bedrock/latest/userguide/model-access.html))  -  resolvable by retrying after a short wait, or by an administrator granting `aws-marketplace:ViewSubscriptions` / `aws-marketplace:Subscribe` to the role.
 
 ---
 
@@ -674,7 +674,7 @@ Confirm deletion completed:
 
 ```bash
 aws cloudformation describe-stacks --stack-name restaurant-agent --region us-east-1
-# Expected: "Stack with id restaurant-agent does not exist" — this confirms success
+# Expected: "Stack with id restaurant-agent does not exist"  -  this confirms success
 ```
 
 **Manually delete** (not managed by CloudFormation):
