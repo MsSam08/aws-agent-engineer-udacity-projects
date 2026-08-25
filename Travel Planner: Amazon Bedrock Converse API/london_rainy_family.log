@@ -1,0 +1,44 @@
+Travel Planner
+========================================
+Ask me to help plan your visit to a city. (Ctrl+C to quit)
+
+You: I'll be in London on 2026-03-14 with my family. What should we do?
+  [tool call] get_weather({'date': '2026-03-14', 'city': 'London'})
+  [tool result] {'city': 'London', 'date': '2026-03-14', 'condition': 'Light rain in the morning, clearing to partly cloudy by afternoon', 'temperature_celsius': 11, 'wind_mph': 12, 'recommendation': 'Bring a light jacket and umbrella for the morning'}
+  [tool call] get_top_attractions({'city': 'London'})
+  [tool result] {'city': 'London', 'attractions': [{'name': 'British Museum', 'type': 'indoor', 'family_friendly': True, 'avg_visit_hours': 2.0}, {'name': 'Tower of London', 'type': 'outdoor/indoor', 'family_friendly': True, 'avg_visit_hours': 2.5}, {'name': 'Natural History Museum', 'type': 'indoor', 'family_friendly': True, 'avg_visit_hours': 2.0}, {'name': 'Hyde Park', 'type': 'outdoor', 'family_friendly': True, 'avg_visit_hours': 1.5}, {'name': 'Covent Garden', 'type': 'outdoor/indoor', 'family_friendly': True, 'avg_visit_hours': 1.0}, {'name': 'The Comedy Store', 'type': 'indoor', 'family_friendly': False, 'avg_visit_hours': 2.0}, {'name': 'Soho Nightlife', 'type': 'outdoor/indoor', 'family_friendly': False, 'avg_visit_hours': 3.0}, {'name': 'Shoreditch Bar Crawl', 'type': 'outdoor/indoor', 'family_friendly': False, 'avg_visit_hours': 4.0}]}
+
+Assistant: Great! With your family visiting London on 2026-03-14, here's a tailored plan based on the weather and attractions:
+
+### Weather Overview
+- **Morning**: Light rain expected with temperatures around 11°C
+- **Afternoon**: Conditions improve to partly cloudy skies
+- **Recommendation**: Bring a light jacket and umbrella for the morning
+
+### Family-Friendly Itinerary
+Given the weather and your group, here are the best options:
+
+**Morning (Prepare for light rain)**
+- Start with **British Museum** - Perfect indoor activity while morning rain clears up
+- Spend about 2 hours exploring world-class collections
+
+**Late Morning/Early Afternoon (As weather improves)**
+- Head to **Natural History Museum** - Another excellent indoor option with fascinating exhibits
+- Plan for ~2 hours here
+
+**Afternoon (When skies partly clear)**
+- Visit **Hyde Park** - Enjoy outdoor space when conditions improve
+- Perfect for a leisurely stroll or picnic when rain stops
+- Estimated 1.5 hours for relaxed exploration
+
+**Optional Evening (If weather permits)**
+- **Covent Garden** offers great people-watching and street performances
+- Family-friendly atmosphere with various entertainment options
+- Plan for about 1 hour if you stay out late
+
+### Why This Works
+All these attractions are specifically marked as family-friendly in our data, and the plan follows the weather pattern - starting indoors during rain and moving outdoors as conditions improve. The British Museum and Natural History Museum are particularly excellent choices for children with their interactive exhibits and vast collections.
+
+Enjoy your family visit to London!
+
+You: 
