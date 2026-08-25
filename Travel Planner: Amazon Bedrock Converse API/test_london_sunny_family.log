@@ -1,0 +1,39 @@
+Travel Planner
+========================================
+Ask me to help plan your visit to a city. (Ctrl+C to quit)
+
+You: I'll be in London on 2026-03-15 with my kids. What should we do?
+  [tool call] get_weather({'date': '2026-03-15', 'city': 'London'})
+  [tool result] {'city': 'London', 'date': '2026-03-15', 'condition': 'Clear and sunny throughout the day', 'temperature_celsius': 14, 'wind_mph': 8, 'recommendation': 'Great day to spend time outdoors'}
+  [tool call] get_top_attractions({'city': 'London'})
+  [tool result] {'city': 'London', 'attractions': [{'name': 'British Museum', 'type': 'indoor', 'family_friendly': True, 'avg_visit_hours': 2.0}, {'name': 'Tower of London', 'type': 'outdoor/indoor', 'family_friendly': True, 'avg_visit_hours': 2.5}, {'name': 'Natural History Museum', 'type': 'indoor', 'family_friendly': True, 'avg_visit_hours': 2.0}, {'name': 'Hyde Park', 'type': 'outdoor', 'family_friendly': True, 'avg_visit_hours': 1.5}, {'name': 'Covent Garden', 'type': 'outdoor/indoor', 'family_friendly': True, 'avg_visit_hours': 1.0}, {'name': 'The Comedy Store', 'type': 'indoor', 'family_friendly': False, 'avg_visit_hours': 2.0}, {'name': 'Soho Nightlife', 'type': 'outdoor/indoor', 'family_friendly': False, 'avg_visit_hours': 3.0}, {'name': 'Shoreditch Bar Crawl', 'type': 'outdoor/indoor', 'family_friendly': False, 'avg_visit_hours': 4.0}]}
+
+Assistant: Perfect! On **2026-03-15** London will have **clear and sunny** weather with a pleasant **14°C** temperature — a **great day to spend time outdoors**, according to the forecast.
+
+Since you're traveling with kids, here are the **family-friendly attractions** well-suited for this lovely weather:
+
+### Outdoor Options
+1. **Hyde Park**  
+   - Spend 1.5 hours exploring the park’s open spaces, lakes, and playgrounds.  
+   - Perfect for a picnic or a leisurely stroll on this sunny day.
+
+2. **Tower of London** (outdoor/indoor sections)  
+   - Visit the outdoor grounds and then explore the indoor exhibits — a balanced mix for kids.  
+   - Plan for ~2.5 hours to see the Crown Jewels and enjoy the views.
+
+### Indoor Options (in case of any unexpected weather changes)
+1. **British Museum**  
+   - A 2-hour visit to see fascinating historical artifacts — great for curious minds.  
+
+2. **Natural History Museum**  
+   - Also around 2 hours, with interactive exhibits that kids love, such as the dinosaur skeletons and the earthquake simulator.
+
+### Mixed Indoor/Outdoor Option
+- **Covent Garden**  
+  - Spend about 1 hour wandering the market, watching street performances, and grabbing a kid-friendly snack.
+
+Given the **sunny and clear conditions**, I’d recommend starting your day in **Hyde Park** for fresh air, then heading to the **Tower of London** for a mix of history and outdoor views. You can finish your day indoors at either the **British Museum** or the **Natural History Museum**, depending on your kids’ interests.
+
+Enjoy your family trip to London!
+
+You: 
