@@ -1,0 +1,30 @@
+Travel Planner
+========================================
+Ask me to help plan your visit to a city. (Ctrl+C to quit)
+
+You: I'm in London on 2026-03-14 for a night out with friends. What do you suggest?
+  [tool call] get_weather({'date': '2026-03-14', 'city': 'London'})
+  [tool result] {'city': 'London', 'date': '2026-03-14', 'condition': 'Light rain in the morning, clearing to partly cloudy by afternoon', 'temperature_celsius': 11, 'wind_mph': 12, 'recommendation': 'Bring a light jacket and umbrella for the morning'}
+  [tool call] get_top_attractions({'city': 'London'})
+  [tool result] {'city': 'London', 'attractions': [{'name': 'British Museum', 'type': 'indoor', 'family_friendly': True, 'avg_visit_hours': 2.0}, {'name': 'Tower of London', 'type': 'outdoor/indoor', 'family_friendly': True, 'avg_visit_hours': 2.5}, {'name': 'Natural History Museum', 'type': 'indoor', 'family_friendly': True, 'avg_visit_hours': 2.0}, {'name': 'Hyde Park', 'type': 'outdoor', 'family_friendly': True, 'avg_visit_hours': 1.5}, {'name': 'Covent Garden', 'type': 'outdoor/indoor', 'family_friendly': True, 'avg_visit_hours': 1.0}, {'name': 'The Comedy Store', 'type': 'indoor', 'family_friendly': False, 'avg_visit_hours': 2.0}, {'name': 'Soho Nightlife', 'type': 'outdoor/indoor', 'family_friendly': False, 'avg_visit_hours': 3.0}, {'name': 'Shoreditch Bar Crawl', 'type': 'outdoor/indoor', 'family_friendly': False, 'avg_visit_hours': 4.0}]}
+
+Assistant: Based on your night out with friends in London on 2026-03-14, here are my recommendations:
+
+**Weather Conditions:**
+- Temperature: 11°C
+- Conditions: Light rain in the morning, clearing to partly cloudy by afternoon
+- Wind: 12 mph
+- Recommendation: Bring a light jacket and umbrella
+
+**Nightlife Suggestions:**
+Since you're looking for a night out with friends, here are the best options from London's top attractions that match your needs:
+
+1. **Soho Nightlife** - Perfect for a night out with friends (rated 3 hours average visit time, adult-friendly)
+2. **Shoreditch Bar Crawl** - Great for group activities and nightlife experiences (rated 4 hours average visit time, adult-friendly)
+3. **The Comedy Store** - If you're looking for some laughs, this is London's famous comedy venue (2 hours average visit time, adult-friendly)
+
+**Recommendation:** Given that you'll be out with friends and the weather suggests it might still be a bit damp in the evening, I'd recommend starting with **Soho Nightlife** for dinner and drinks, then possibly moving to **The Comedy Store** for some entertainment before finishing up with a **Shoreditch Bar Crawl** if you're up for a more energetic night.
+
+The temperature of 11°C means you'll want to keep warm, so bring that light jacket even for nighttime activities!
+
+You: 
