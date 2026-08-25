@@ -1,0 +1,15 @@
+Travel Planner
+========================================
+Ask me to help plan your visit to a city. (Ctrl+C to quit)
+
+You: I'll be in Paris on 2026-03-14 with my family. What should we do?
+  [tool call] get_weather({'date': '2026-03-14', 'city': 'Paris'})
+  [tool result] {'city': 'Paris', 'date': '2026-03-14', 'condition': 'No data available'}
+  [tool call] get_top_attractions({'city': 'Paris'})
+  [tool result] {'city': 'Paris', 'attractions': []}
+
+Assistant: I don't have weather or attraction information available for Paris on 2026-03-14. My current coverage is limited to London for the dates 2026-03-14 and 2026-03-15.
+
+Would you like me to help you plan your trip for London instead? I can provide weather forecasts and top attractions for those dates to help you plan a family-friendly itinerary.
+
+You: 
