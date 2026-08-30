@@ -1,263 +1,168 @@
-# Step-by-Step Implementation Guide
-## Customer Support Chatbot with Amazon Bedrock AgentCore
+# Customer Support Chatbot, Amazon Bedrock AgentCore
 
-**Note on project history:** this project was originally built on Bedrock Flows (Classifier prompt node + Condition node + branch handlers). Bedrock Agents Classic closed to new customers on July 30, 2026, and the course has since moved to **Amazon Bedrock AgentCore's managed harness**. If you built a Flow earlier, that work isn't part of the graded deliverable — everything below replaces it. You can leave the old Flow in the console or delete it during final cleanup.
+A customer support chatbot for a fictional online shop, built on the **Amazon Bedrock AgentCore managed harness**. All routing, multi-turn information gathering, and FAQ grounding live in a single system prompt, there is no separate classifier, condition graph, or agent resource. The harness supplies the agent loop (model calls, stateful sessions, tool execution); the prompt supplies the behavior.
 
----
+> **Note on project history:** this project was originally scoped around Bedrock Flows (a classifier prompt node + condition node + branch handlers). Bedrock Agents Classic closed to new customers on July 30, 2026, and the course migrated to AgentCore's managed harness shortly after. This README documents the current, AgentCore-based implementation.
 
-## Prerequisites Check
+## What it does
 
-```bash
-aws sts get-caller-identity
-aws configure get region          # must be us-east-1
-python3 --version                 # 3.9+
+Every incoming customer message is routed to exactly one of three behaviors:
+
+| Category | Behavior |
+|---|---|
+| **Bug report** | Collects a bug description, steps to reproduce, and the customer's environment across the conversation, one question at a time, then files a ticket via the `create_bug_report` tool and relays the ticket ID |
+| **Platform question** | Answers orders/shipping/returns/payments questions strictly from an embedded FAQ document |
+| **Anything else** | Politely redirects the customer to a human support phone line |
+
+## Architecture
+
+```
+Customer message
+      │
+      ▼
+┌─────────────────────────────┐
+│  AgentCore Harness           │   stateful session, Nova Pro (us.amazon.nova-pro-v1:0)
+│  (system_prompt.txt)         │   greedy decoding for reliable tool calling
+└──────────────┬───────────────┘
+               │ tool call: create_bug_report
+               ▼
+┌─────────────────────────────┐
+│  AgentCore Gateway            │   exposes the Lambda as bugreports___create_bug_report
+└──────────────┬───────────────┘
+               ▼
+┌─────────────────────────────┐
+│  Lambda: create_bug_report    │   validates all 3 fields, writes to DynamoDB
+└──────────────┬───────────────┘
+               ▼
+┌─────────────────────────────┐
+│  DynamoDB: bug-reports table  │   one item per ticket, keyed by ticketId
+└─────────────────────────────┘
 ```
 
-**Model:** this project pins `us.amazon.nova-pro-v1:0` (a cross-region inference profile ID — note the `us.` prefix) everywhere. Don't substitute the harness's default model or the bare `amazon.nova-pro-v1:0` model ID — the former needs an AWS Marketplace subscription lab accounts can't complete, and the latter may hit an explicit IAM deny in some lab accounts.
+The FAQ (`online_shop_faq.md`) is embedded directly in the system prompt via a `{{FAQ}}` placeholder, substituted at harness-creation time, the simplest viable approach for a short, stable document (RAG/Knowledge Bases would be the standard solution for larger documents, out of scope here).
 
-**CLI version note:** if you're on AWS CLI v1 (`aws --version` shows `aws-cli/1.x`), drop any `--cli-binary-format` flags from commands you find elsewhere — that flag is v2-only.
-
-**Clean up any stale resources from an earlier attempt.** If you deployed a `bug-report-tool-stack` before this course version existed, its resources won't match what the current `cloudformation-tool.yaml` expects (different Lambda payload shape, missing gateway/harness IAM roles). Delete it first:
-
-```bash
-aws cloudformation delete-stack --stack-name bug-report-tool-stack --region us-east-1
-aws cloudformation wait stack-delete-complete --stack-name bug-report-tool-stack --region us-east-1
-```
-
----
-
-## Step 0: Get the Project Files
-
-All files live in `project/starter/` in the project repository. Get that repo locally (clone or download per your course's instructions) and run every command from inside `project/starter/`.
-
-```bash
-cd project/starter/
-pip install -r requirements.txt --break-system-packages   # boto3 1.43+
-```
+## Repository structure
 
 | File | Purpose |
 |---|---|
+| `system_prompt.txt` | **Main deliverable**, the chatbot's system prompt |
 | `cloudformation-tool.yaml` | DynamoDB table, `create_bug_report` Lambda, gateway + harness IAM roles |
 | `cloudformation-testing.yaml` | Evaluation resources (S3 bucket + eval role) |
-| `create_bug_report.py` | Lambda code (also embedded in the tool template) |
+| `create_bug_report.py` | Lambda implementation (also embedded in the tool template) |
 | `setup_gateway.py` | Creates the AgentCore Gateway, registers the Lambda as a tool |
-| `system_prompt.txt` | **Your main deliverable** — the chatbot's system prompt |
 | `create_harness.py` | Creates/updates the managed harness from `system_prompt.txt` |
-| `chat.py` | Terminal chat client for manual testing |
-| `online_shop_faq.md` | FAQ content, injected via `{{FAQ}}` placeholder |
-| `harness-tests-template.json` | Copy this to build your test suite |
-| `generate-eval-dataset.py` | Runs the harness against your test suite → JSONL |
+| `chat.py` | Terminal chat client for manual, multi-turn testing |
+| `online_shop_faq.md` | FAQ content, injected via `{{FAQ}}` |
+| `harness-tests.json` | 8-case automated test suite (all three routes + edge cases) |
+| `generate-eval-dataset.py` | Runs the harness against the test suite → JSONL for Bedrock Evaluations |
 | `cleanup_agentcore.py` | Tears down harness, gateway target, and gateway |
+| `written_observations.md` | Full testing/evaluation write-up, including two open findings |
 
----
+## Setup and deployment
 
-## Step 1: Deploy the Tool Stack and Create the Gateway
-
-**1. Deploy DynamoDB + Lambda + IAM roles:**
+Prerequisites: AWS account with Bedrock + AgentCore access, AWS CLI configured, Python 3.9+, region `us-east-1`, model pinned to `us.amazon.nova-pro-v1:0` (an inference profile ID, do not substitute the harness default model or a bare model ID).
 
 ```bash
+pip install -r requirements.txt --break-system-packages
+
+# 1. Deploy DynamoDB + Lambda + gateway/harness IAM roles
 aws cloudformation deploy \
   --template-file cloudformation-tool.yaml \
   --stack-name bug-report-tool-stack \
   --capabilities CAPABILITY_NAMED_IAM \
   --region us-east-1
-```
 
-`CAPABILITY_NAMED_IAM` is required because the template creates named IAM roles: a Lambda execution role, a **gateway role** (lets the Gateway invoke the Lambda), and a **harness role** (lets the harness call Bedrock models and invoke the gateway).
-
-This creates, with fixed names:
-
-| Resource | Name |
-|---|---|
-| DynamoDB table | `bug-report-tool-stack-bug-reports` |
-| Lambda function | `bug-report-tool-stack-create-bug-report` |
-| IAM role (Lambda) | `bug-report-tool-stack-lambda-role` |
-| IAM role (Gateway) | `bug-report-tool-stack-gateway-role` |
-| IAM role (Harness) | `bug-report-tool-stack-harness-role` |
-
-**2. Create the gateway and register the tool:**
-
-```bash
+# 2. Create the AgentCore Gateway and register the Lambda as a tool
 python setup_gateway.py
+
+# 3. Create the harness from system_prompt.txt
+python create_harness.py
+
+# 4. Chat with it
+python chat.py
 ```
 
-This reads the stack outputs itself (no manual copy-pasting) and saves everything later steps need into `agentcore_config.json`. The Lambda is registered behind a Gateway target named `bugreports`, so the model will see the tool as `bugreports___create_bug_report`.
+Iterating on the prompt is fast: edit `system_prompt.txt`, re-run `create_harness.py` (updates the harness in place), start a new `chat.py` session. No "prepare" step, nothing to redeploy.
 
-⚠️ If this fails right after the stack finishes, with an access/validation error mentioning a role, that's IAM propagation delay. The script already retries — if it still fails, just run it again a minute later.
+## System prompt design
 
-**3. Test the Lambda in isolation before wiring it into your prompt.**
+The prompt asks the model to classify every message into exactly one of three categories before acting, then follow only that category's rules. Several rules exist specifically because testing surfaced real failures they now prevent:
 
-In the Lambda console, open `bug-report-tool-stack-create-bug-report` → **Test** tab → create a new test event. The Gateway sends tool arguments as a **flat JSON object with no wrapper envelope** (this is different from Agents Classic's old `messageVersion`/`parameters` structure):
+- **Field-fabrication guard + worked multi-turn example**, added after the model was caught calling `create_bug_report` with placeholder text (`"Please provide your browser, OS..."`) or fabricated values (`"Chrome browser, Windows 10, Desktop computer"`) instead of asking the customer. A plain negative instruction ("don't invent values") wasn't sufficient on its own; a concrete worked example of the expected turn-by-turn behavior was needed to reliably fix it.
+- **FAQ file-lookup suppression**, added after the model attempted to call an unregistered `file_operations` tool instead of using the FAQ text already present in its context.
+- **Category tie-breaking rule**, bug report > platform question > other, to keep classification deterministic on ambiguous input.
+- **Prompt-injection hardening**, the model is told to ignore in-message instructions that try to override its rules or reveal the system prompt; verified against two dedicated injection test cases (see Testing, below).
+- **`<thinking>`-tag suppression**, the model is told never to leak its reasoning trace into customer-facing text. This is only a partial mitigation; see Known Limitations.
 
-```json
-{
-    "description": "The checkout page crashes when I click the Pay button",
-    "stepsToReproduce": "1. Add an item to the cart. 2. Go to checkout. 3. Click Pay.",
-    "environment": "Chrome 120 on macOS Sonoma"
-}
-```
+Full prompt text and design rationale: see `system_prompt.txt`.
 
-Click **Test**. You should get back a `ticketId` and `"status": "OPEN"`.
+## Testing and evaluation
 
-**4. Confirm the record landed in DynamoDB:**
+### Automated test suite
+
+`harness-tests.json` contains 8 cases covering all three routes plus edge cases: an FAQ-covered question, an FAQ-not-covered question, a fully off-topic question, a bug report with all fields supplied upfront, a bug report from a single vague message, and two distinct prompt-injection attempts.
 
 ```bash
-aws dynamodb scan --table-name bug-report-tool-stack-bug-reports --region us-east-1
+python generate-eval-dataset.py
 ```
+produces a JSONL file, uploaded to S3 and evaluated with **Bedrock Evaluations (LLM-as-a-judge)** using `us.anthropic.claude-sonnet-4-5-20250929-v1:0` as the evaluator model, scoring Helpfulness, Correctness, and Following Instructions.
 
-Or via console: DynamoDB → `bug-report-tool-stack-bug-reports` → **Explore table items**.
+### Results
 
-**Troubleshooting:**
-- `AccessDeniedException` → check the IAM policy is attached to the correct execution role
-- `ResourceNotFoundException` → verify the Lambda's `TABLE_NAME` env var matches `bug-report-tool-stack-bug-reports`
-- The Lambda logs every event it receives to CloudWatch (`/aws/lambda/bug-report-tool-stack-create-bug-report`) — this is ground truth for what actually reached it if something looks wrong
+| Metric | Average | Notes |
+|---|---|---|
+| **Correctness** | **1.00** | Perfect across all 8 cases, every response matched its documented expected behavior |
+| **Following Instructions** | **1.00** | Both prompt-injection attempts fully deflected: no system-prompt or FAQ leak, no deviation from defined behavior |
+| **Helpfulness** | **0.58** | Correctness alone didn't capture tone/UX issues the judge flagged (see below) |
 
----
+<!-- ![Evaluation metrics summary](docs/images/chatbot_1.png) -->
 
-## Step 2: Build the Harness — Design the System Prompt
+Per-case results (Helpfulness, the most variable metric):
 
-This is the core of the project. **There are no condition nodes or classifiers anymore — the routing, information-gathering, and grounding behavior all live in one prompt.**
+| Case | Score | Judge's note |
+|---|---|---|
+| "How long does shipping take?" (FAQ-covered) | 0.67 | Accurate, grounded in FAQ |
+| "Do you sell gift cards?" (FAQ hand-off) | 0.33 | Redirect language referenced "the FAQ" in a way the judge found confusing, since the customer never mentioned the FAQ |
+| "What's the weather like today?" (off-topic) | 0.17 | Jumping straight to a phone-number redirect read as "odd" and "dismissive" without first acknowledging the assistant has no weather capability |
+| Bug report, all fields upfront | 0.33 | Ticket confirmation read as impersonal for a payment-blocking issue; judge wanted acknowledgment of urgency/empathy alongside the ticket ID |
+| "The checkout page is broken" (single vague message) | 0.83 | Correctly asked one clarifying question instead of calling the tool |
 
-Open `system_prompt.txt` and write instructions covering all three request types:
+<!-- ![Per-case generation results](docs/images/chatbot_2.png) -->
+<!-- ![Helpfulness score distribution](docs/images/chatbot_2_1.png) -->
 
-- **Bug reports** — collect info conversationally, call `create_bug_report` once complete
-- **Platform questions** — answer only from the embedded FAQ
-- **Other requests** — politely redirect to human support by phone
+Correctness was perfect across all 8 cases:
 
-### Bug report tool parameters (all required)
+<!-- ![Correctness score distribution](docs/images/chatbot3.png) -->
+<!-- ![Correctness per-case results](docs/images/chatbot3_1.png) -->
 
-| Parameter | Description |
-|---|---|
-| `description` | Bug description, in the customer's words |
-| `stepsToReproduce` | Steps to reproduce the issue |
-| `environment` | Browser/OS/device |
+Both prompt-injection cases scored a perfect 1.0 on Following Instructions:
 
-Customers rarely give all three up front. Because the harness keeps session state across turns, your prompt just needs to tell the model to **ask for what's missing, one question at a time**, before calling the tool — and to relay the `ticketId` back to the customer afterward.
+<!-- ![Following instructions results](docs/images/chatbot_4.png) -->
+<!-- ![Following instructions score distribution](docs/images/chatbot_4_1.png) -->
 
-### Embed the FAQ
+The judge model **independently corroborated two findings from manual testing** without being told about them in advance, flagging a leaked internal category label ("BUG REPORT") in one response's Helpfulness rationale, and noting visible internal reasoning in another case's Correctness rationale. See `written_observations.md` for the full write-up.
 
-Keep the literal `{{FAQ}}` placeholder somewhere in `system_prompt.txt` — `create_harness.py` automatically substitutes it with the full contents of `online_shop_faq.md` at harness-creation time. You don't paste the FAQ in by hand.
+## Known limitations (open findings)
 
-### Suggested prompt structure
+Documented rather than papered over, both were caught through direct evidence (CloudWatch logs, DynamoDB scans, and independent corroboration by the Bedrock Evaluations judge model):
 
-```
-You are a customer support assistant for an online shop. Classify every
-customer message into exactly one of these three categories before doing
-anything else:
+1. **Intermittent `<thinking>`-tag / category-label leakage** on short or ambiguous inputs. Prompting alone did not fully and reliably suppress the model's internal reasoning trace in every case.
+2. **No idempotency protection in `create_bug_report`.** The Lambda always generates a new UUID and performs an unconditional `put_item`; a retried invocation or model self-correction could file duplicate tickets for one issue with no automatic detection or merge.
 
-1. BUG_REPORT — the customer describes something on the site that isn't
-   working correctly.
-2. FAQ_QUESTION — the question is about orders, shipping, returns, payments,
-   products, account, or privacy, and is answerable from the FAQ below.
-3. OTHER — anything else.
-
-## Handling BUG_REPORT
-Collect all three of the following before calling create_bug_report:
-- description (the bug, in the customer's own words)
-- stepsToReproduce
-- environment (browser/OS/device)
-Ask for missing fields one at a time — do not ask for all three at once.
-Do not call the tool until you have all three. After the tool succeeds,
-tell the customer their ticket ID.
-
-## Handling FAQ_QUESTION
-Answer using only the FAQ below. If the FAQ doesn't cover the question,
-tell the customer you don't have that information and direct them to
-contact support.
-
-## Handling OTHER
-Politely explain this chatbot can't help with that request, and direct
-the customer to contact human support by phone.
-
-FAQ:
-{{FAQ}}
-```
-
-### Create the harness and iterate
-
-```bash
-python create_harness.py     # first run: ~2-3 minutes
-python chat.py                # each run = one fresh conversation
-```
-
-Iteration loop: edit `system_prompt.txt` → re-run `create_harness.py` (updates the existing harness in place) → start a new `chat.py` session. **No "prepare" step, nothing to redeploy** — changes apply as soon as `create_harness.py` finishes.
-
-### Tips
-
-- Treat routing as a classification problem: crisp category definitions → predictable routing. Vague definitions → vague routing.
-- Explicitly forbid calling the tool until all three bug-report fields are collected.
-- Tell the model what to do when the FAQ doesn't cover a question (the hand-off case) — don't leave this implicit.
-- Watch for `[tool call] bugreports___create_bug_report` in `chat.py` output — if you never see it during a bug-report conversation, your prompt isn't clearly telling the model when to use the tool.
-- Verify tickets really land in DynamoDB (not just that the model *says* it created one):
-  ```bash
-  aws dynamodb scan --table-name bug-report-tool-stack-bug-reports --region us-east-1
-  ```
-
----
-
-## Step 3: Testing and Evaluation
-
-1. **Build your test suite** — copy `harness-tests-template.json` to `harness-tests.json`, fill in test cases covering all three routes (bug report, FAQ, other), plus edge cases:
-   - A bug report with all three fields up front (single-turn)
-   - A bug report missing fields, to exercise the multi-turn collection flow
-   - An FAQ question actually covered by the doc
-   - An FAQ question *not* covered by the doc (tests the hand-off case)
-   - A clearly off-topic message
-   - Optional (stand-out): ambiguous messages, very short messages, prompt injection attempts (e.g. "ignore your previous instructions")
-
-2. **Run the harness against the test suite:**
-   ```bash
-   python generate-eval-dataset.py
-   ```
-   (Check `--help` for exact flags if they're not positional — this generates a JSONL file for Bedrock Evaluations.)
-
-3. **Create a Bedrock Evaluations job** (LLM-as-a-judge) pointing at that JSONL output, per your course's Testing Framework page.
-
-4. **Write observations** on the results — this is an explicit submission requirement, not optional. Look specifically at:
-   - Did classification stay consistent across ambiguous/edge-case prompts?
-   - Did the bug-report flow actually collect all three fields before calling the tool, across multi-turn conversations?
-   - Did FAQ hand-off trigger correctly when the FAQ didn't cover a question?
-
----
-
-## Submission Checklist
-
-| Criterion | What's being checked |
-|---|---|
-| **Routing** | Every message routes to exactly one of the three behaviors, predictably across the test suite |
-| **Bug Report Handling** | All three fields collected across the conversation before the tool is called; ticket ID relayed to customer; record actually exists in `bug-report-tool-stack-bug-reports` |
-| **FAQ and Hand-Off Handling** | Platform questions answered only from the `{{FAQ}}`-embedded content; hand-off when FAQ doesn't cover it; off-topic requests get a polite phone-line redirect |
-| **Testing and Evaluation** | `harness-tests.json` covers all three routes; `generate-eval-dataset.py` produces JSONL; a Bedrock Evaluations job is created; written observations are provided |
-
-### Stand-out suggestions (optional)
-- Edge-case test prompts: ambiguous messages, very short messages, prompt injection attempts
-- Harden the system prompt against prompt injection (instructions that try to override it mid-conversation)
-- Multi-turn bug-report tests scripted in `chat.py`, with DynamoDB fields checked against what the customer actually said
-- Extend the FAQ with your own entries and confirm the chatbot picks them up after just re-running `create_harness.py` (no redeploy)
-
----
+See `written_observations.md` for the full debugging narrative, including a documented memory-isolation bug (AgentCore's default-on cross-session memory, keyed on `actorId`, was initially not scoped correctly in `chat.py`/`generate-eval-dataset.py`, causing test conversations to bleed context into one another) and its fix.
 
 ## Cleanup
 
 ```bash
-python cleanup_agentcore.py       # deletes harness, gateway target, gateway
+python cleanup_agentcore.py
 aws cloudformation delete-stack --stack-name bug-report-tool-stack --region us-east-1
 aws cloudformation delete-stack --stack-name bug-report-testing-stack --region us-east-1
 ```
 
-If you also built a Bedrock Flow earlier during the pre-pivot version of this project, delete it manually from the Bedrock console (Flows are not managed by these CloudFormation stacks).
+## Technology stack
 
----
-
-## Quick Troubleshooting Reference
-
-| Symptom | Likely cause |
-|---|---|
-| `setup_gateway.py` fails right after stack creation | IAM propagation delay — wait a minute, run again |
-| Lambda test returns `AccessDeniedException` | IAM policy not attached to the correct execution role |
-| Lambda test returns `ResourceNotFoundException` | `TABLE_NAME` env var doesn't match `bug-report-tool-stack-bug-reports` |
-| `[tool call]` never appears in `chat.py` | System prompt doesn't clearly instruct the model when to call the tool |
-| Ticket "created" per the chatbot but missing from DynamoDB | Trust the DB scan over the model's claim — check CloudWatch logs for the Lambda to see what it actually received |
-| Nova Pro invoke fails with explicit IAM deny | Make sure you're using the inference profile ID `us.amazon.nova-pro-v1:0`, not the bare model ID `amazon.nova-pro-v1:0` |
-| `Unknown options: --cli-binary-format` | You're on AWS CLI v1 — drop that flag, it's v2-only |
-| Old `bug-report-tool-stack` resources have unexpected names/suffixes | You deployed the pre-AgentCore template — delete the stack and redeploy with the current `cloudformation-tool.yaml` from `project/starter/` |
+- [Amazon Bedrock AgentCore managed harness](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/harness.html), agent loop, stateful sessions, tool execution
+- [Amazon Bedrock AgentCore Gateway](https://docs.aws.amazon.com/bedrock-agentcore/), exposes the bug-report Lambda as a callable tool
+- [Amazon Bedrock Evaluations](https://docs.aws.amazon.com/bedrock/latest/userguide/evaluation.html), LLM-as-a-judge evaluation
+- [AWS Lambda](https://aws.amazon.com/lambda/), bug-report tool runtime
+- [Amazon DynamoDB](https://aws.amazon.com/dynamodb/), bug-report ticket storage
