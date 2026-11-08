@@ -88,7 +88,7 @@ In **Bedrock console > Prompt Management > Create prompt**:
 4. Click **Create version** to publish an immutable **Version 1**. The draft ARN alone cannot be invoked from code, only a published version can.
 5. Copy the version ARN (ends in `:1`) for use in the script.
 
-**[Insert faq_5.png here — Prompts list showing faq-assistant-prompt]**
+![Prompt](https://github.com/MsSam08/aws-agent-engineer-udacity-projects/blob/main/Product%20FAQ%20Assistant%20Eval/faq%205.png)
 
 ---
 
@@ -144,9 +144,9 @@ Run it:
 python faq_assistant.py
 ```
 
-**[Insert faq_2.png here — terminal output of all 7 Q/A pairs running cleanly]**
+![terminal output](https://github.com/MsSam08/aws-agent-engineer-udacity-projects/blob/main/Product%20FAQ%20Assistant%20Eval/faq%202.png)
 
-**[Insert faq_3.png here — eval_responses.jsonl contents]**
+![eval responses](https://github.com/MsSam08/aws-agent-engineer-udacity-projects/blob/main/Product%20FAQ%20Assistant%20Eval/faq%203.png)
 
 ---
 
@@ -186,7 +186,7 @@ BUCKET=$(aws cloudformation describe-stacks --stack-name faq-assistant-eval \
 aws s3 cp eval_responses.jsonl s3://$BUCKET/eval_responses.jsonl
 ```
 
-**[Insert faq_1.png here — CloudFormation deploy and S3 upload output]**
+![CloudFormation deploy and S3 upload output](https://github.com/MsSam08/aws-agent-engineer-udacity-projects/blob/main/Product%20FAQ%20Assistant%20Eval/faq%201.png)
 
 ---
 
@@ -201,7 +201,7 @@ In **Bedrock console > Evaluations > Create > Automatic: LLM as a judge**:
 6. Under IAM role permissions, choose **Create default role** (or reuse an existing one if you hit an `EntityAlreadyExistsException` from a prior attempt with the same auto-generated role name).
 7. Click **Create**.
 
-**[Insert faq_4.png here — Model evaluations list showing faq-assistant-eval-v1 as Completed]**
+![Model evaluations list showing faq-assistant-eval-v1 as Completed](https://github.com/MsSam08/aws-agent-engineer-udacity-projects/blob/main/Product%20FAQ%20Assistant%20Eval/faq%204.png)
 
 ---
 
@@ -209,7 +209,7 @@ In **Bedrock console > Evaluations > Create > Automatic: LLM as a judge**:
 
 The evaluation job scored all 7 prompts at a perfect **1.000 average Correctness**, meaning every answerable question got the right answer, and every unanswerable question correctly triggered a refusal instead of a guess.
 
-**[Insert faq_6.png here — Correctness score chart, average 1.000]**
+![Correctness score chart, average 1.000](https://github.com/MsSam08/aws-agent-engineer-udacity-projects/blob/main/Product%20FAQ%20Assistant%20Eval/faq%206.png)
 
 | Scenario | Question | Result |
 |---|---|---|
